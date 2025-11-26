@@ -5,7 +5,7 @@ from typing import List
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QVBoxLayout, QMessageBox
 from PySide6.QtCore import Qt, QRect, QPoint, Signal
-from PySide6.QtGui import QPainter, QColor, QPixmap, QGuiApplication
+from PySide6.QtGui import QPainter, QColor, QPixmap, QGuiApplication, QPainterPath
 
 from ..config import AppConfig
 from ..core.models import CaptureMode, CaptureRequest
@@ -129,9 +129,14 @@ class SnipOverlay(QWidget):
             mode=CaptureMode.FULLSCREEN,
             delay_seconds=self.delay,
         )
-        self._perform_capture(request, selection_rect=None)
+        self._perform_capture(request, selection_rect=None, selection_mask=None)
 
-    def _perform_capture(self, request: CaptureRequest, selection_rect: QRect | None):
+    def _perform_capture(
+        self,
+        request: CaptureRequest,
+        selection_rect: QRect | None,
+        selection_mask: QPainterPath | None,
+    ):
         """
         Esconde o overlay, roda a captura via CaptureService e devolve o QPixmap.
         """
@@ -188,11 +193,13 @@ class SnipOverlay(QWidget):
         self._dragging = False
 
         if self.current_mode in (CaptureMode.RECTANGLE, CaptureMode.FREEFORM, CaptureMode.WINDOW):
-            selection_rect = self._compute_selection_rect()
-            if selection_rect is None:
+            selection_path = self._build_selection_path()
+            if selection_path is None:
                 self.snip_finished.emit(None)
                 self.close()
                 return
+
+            selection_rect = selection_path.boundingRect().toAlignedRect()
 
             mode = self.current_mode
             # Por enquanto, tratamos WINDOW como retângulo; mais pra frente
@@ -203,26 +210,47 @@ class SnipOverlay(QWidget):
             request = CaptureRequest(
                 mode=mode,
                 delay_seconds=self.delay,
+                mask_path=selection_path,
             )
-            self._perform_capture(request, selection_rect=selection_rect)
+            self._perform_capture(
+                request,
+                selection_rect=selection_rect,
+                selection_mask=selection_path,
+            )
 
-    def _compute_selection_rect(self) -> QRect | None:
+    def _build_selection_path(self, allow_open: bool = False) -> QPainterPath | None:
         if self.current_mode in (CaptureMode.RECTANGLE, CaptureMode.WINDOW):
             rect = QRect(self._start_pos, self._end_pos).normalized()
             if rect.isNull() or rect.width() <= 0 or rect.height() <= 0:
                 return None
-            return rect
+            path = QPainterPath()
+            path.addRect(rect)
+            return path
 
         if self.current_mode == CaptureMode.FREEFORM:
-            if not self._freeform_points:
+            if len(self._freeform_points) < 2:
                 return None
-            xs = [p.x() for p in self._freeform_points]
-            ys = [p.y() for p in self._freeform_points]
-            w = max(xs) - min(xs)
-            h = max(ys) - min(ys)
-            if w <= 0 or h <= 0:
+
+            path = QPainterPath()
+            path.moveTo(self._freeform_points[0])
+            for point in self._freeform_points[1:]:
+                path.lineTo(point)
+
+            if len(self._freeform_points) > 2:
+                path.closeSubpath()
+
+            if allow_open:
+                return path
+
+            if len(self._freeform_points) < 3:
                 return None
-            return QRect(min(xs), min(ys), w, h)
+
+            path.closeSubpath()
+            bounds = path.boundingRect()
+            if bounds.isNull() or bounds.width() <= 0 or bounds.height() <= 0:
+                return None
+
+            return path
 
         return None
 
@@ -240,13 +268,14 @@ class SnipOverlay(QWidget):
 
         # Desenha área de seleção, se houver
         if self._dragging or (not self._start_pos.isNull() and not self._end_pos.isNull()):
-            if self.current_mode in (CaptureMode.RECTANGLE, CaptureMode.WINDOW):
-                rect = QRect(self._start_pos, self._end_pos).normalized()
+            selection_path = self._build_selection_path(allow_open=True)
+
+            if selection_path and not selection_path.isEmpty():
                 painter.setCompositionMode(QPainter.CompositionMode_Clear)
-                painter.fillRect(rect, QColor(0, 0, 0, 0))
+                painter.fillPath(selection_path, QColor(0, 0, 0, 0))
                 painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
                 painter.setPen(QColor(0, 120, 215))
-                painter.drawRect(rect)
+                painter.drawPath(selection_path)
 
             elif self.current_mode == CaptureMode.FREEFORM and self._freeform_points:
                 painter.setPen(QColor(0, 120, 215))

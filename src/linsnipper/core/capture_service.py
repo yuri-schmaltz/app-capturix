@@ -115,3 +115,50 @@ class CaptureService:
             created_at=datetime.now(),
             backend_name=self.backend.name,
         )
+
+    def _apply_mask(self, pixmap: QPixmap, mask_path: QPainterPath) -> QPixmap:
+        """Aplica uma máscara vetorial ao pixmap, preservando transparência."""
+
+        result = QPixmap(pixmap.size())
+        result.fill(Qt.transparent)
+
+        painter = QPainter(result)
+        painter.setClipPath(mask_path)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
+
+        return result
+
+    def _validate_masked_capture(self, pixmap: QPixmap, mask_path: QPainterPath) -> bool:
+        """
+        Confirma que pixels fora do traçado permanecem transparentes.
+
+        Essa verificação é leve e visa detectar regressões ao aplicar máscaras
+        não-retangulares na captura.
+        """
+
+        mask_image = QImage(pixmap.size(), QImage.Format_RGBA8888)
+        mask_image.fill(0)
+
+        painter = QPainter(mask_image)
+        painter.fillPath(mask_path, Qt.white)
+        painter.end()
+
+        image = pixmap.toImage().convertToFormat(QImage.Format_RGBA8888)
+        width = image.width()
+        height = image.height()
+
+        for y in range(height):
+            for x in range(width):
+                mask_alpha = mask_image.pixelColor(x, y).alpha()
+                pixel_alpha = image.pixelColor(x, y).alpha()
+                if mask_alpha == 0 and pixel_alpha != 0:
+                    logger.warning(
+                        "Pixels fora da máscara não ficaram transparentes (x=%s, y=%s).",
+                        x,
+                        y,
+                    )
+                    return False
+
+        logger.debug("Validação de máscara concluída com sucesso.")
+        return True
