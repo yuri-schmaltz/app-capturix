@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import datetime
 
 from PySide6.QtCore import QRect
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPainterPath, QPixmap
 
 
 class CaptureMode(Enum):
@@ -21,6 +21,7 @@ class CaptureRequest:
     mode: CaptureMode
     delay_seconds: int = 0
     region: Optional[QRect] = None
+    mask_path: Optional[QPainterPath] = None
     window_id: Optional[int] = None
 
 
