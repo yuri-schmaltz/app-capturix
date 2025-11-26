@@ -140,17 +140,16 @@ class SnipOverlay(QWidget):
         """
         Esconde o overlay, roda a captura via CaptureService e devolve o QPixmap.
         """
-        # Esconde overlay antes da captura real pra não sair no screenshot
-        self.hide()
-        QGuiApplication.processEvents()
+        def _before_capture():
+            # Esconde overlay antes da captura real pra não sair no screenshot
+            self.hide()
+            QGuiApplication.processEvents()
 
-        try:
-            result = self.capture_service.perform_capture(
-                request,
-                selection_rect=selection_rect,
-                selection_mask=selection_mask,
-            )
-        except CaptureError as exc:
+        def _on_success(result):
+            self.snip_finished.emit(result.pixmap)
+            self.close()
+
+        def _on_error(exc: CaptureError):
             logger.exception("Falha na captura: %s", exc)
             QMessageBox.critical(
                 self,
@@ -159,10 +158,14 @@ class SnipOverlay(QWidget):
             )
             self.snip_finished.emit(None)
             self.close()
-            return
 
-        self.snip_finished.emit(result.pixmap)
-        self.close()
+        self.capture_service.perform_capture(
+            request,
+            selection_rect=selection_rect,
+            before_capture=_before_capture,
+            on_finished=_on_success,
+            on_error=_on_error,
+        )
 
     # ------------- Eventos de mouse -------------
 
