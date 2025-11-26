@@ -29,7 +29,7 @@ def setup_logging(config: AppConfig, log_to_console: bool = False) -> None:
 
     fmt = logging.Formatter(
         "%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-        datefmt="%(Y)s-%(m)s-%(d)s %(H)s:%(M)s:%(S)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     file_handler = RotatingFileHandler(
