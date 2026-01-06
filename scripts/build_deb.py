@@ -17,6 +17,7 @@ BUILD_DIR = Path("build_deb")
 PKG_DIR = BUILD_DIR / f"{APP_NAME}_{VERSION}_{ARCH}"
 DEBIAN_DIR = PKG_DIR / "DEBIAN"
 USR_DIR = PKG_DIR / "usr"
+SHARE_DIR = USR_DIR / "share"
 # Use a private directory to avoid conflicts and ensure we find our bundled deps
 LIB_DIR = USR_DIR / "lib" / APP_NAME 
 BIN_DIR = USR_DIR / "bin"
@@ -57,7 +58,26 @@ if __name__ == '__main__':
 """)
     shim_path.chmod(0o755)
 
-    # 3. Create Control File
+    # 3. Create .desktop file (System Menu Entry)
+    APPS_DIR = SHARE_DIR / "applications"
+    APPS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    desktop_content = f"""[Desktop Entry]
+Name=LinSnipper
+Comment={DESC}
+Exec=/usr/bin/{APP_NAME}
+Icon=utilities-terminal
+Type=Application
+Categories=Utility;Graphics;
+Terminal=false
+StartupNotify=true
+"""
+    # Note: Ideally we should bundle an icon too, but 'utilities-terminal' or generic is fine for now.
+    
+    with open(APPS_DIR / f"{APP_NAME}.desktop", "w") as f:
+        f.write(desktop_content)
+
+    # 4. Create Control File
     control_content = f"""Package: {APP_NAME}
 Version: {VERSION}
 Section: utils
