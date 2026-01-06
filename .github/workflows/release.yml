@@ -1,0 +1,42 @@
+name: Release LinSnipper
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install . 
+        # Note: build_deb.py relies on standard library mostly, but uses pip to install target
+
+    - name: Build .deb Package
+      run: |
+        # Run the build script
+        python scripts/build_deb.py
+        
+    - name: Listing artifacts
+      run: ls -l build_deb/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: build_deb/*.deb
+        generate_release_notes: true

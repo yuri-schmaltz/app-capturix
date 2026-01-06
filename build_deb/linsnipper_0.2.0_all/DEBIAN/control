@@ -1,0 +1,9 @@
+Package: linsnipper
+Version: 0.2.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: python3, python3-pyside6
+Maintainer: Your Name <you@example.com>
+Description: Screenshot and snipping tool for Linux
+ Inspired by Windows Snipping Tool.
