@@ -13,6 +13,7 @@ try:
     from linsnipper.core.capture_service import CaptureService
     from linsnipper.core.interfaces import BaseCaptureBackend
     from linsnipper.core.models import CaptureMode, CaptureRequest
+    from linsnipper.errors import CaptureError
 
     QT_AVAILABLE = True
 except ImportError as exc:  # pragma: no cover - ambiente sem dependências gráficas
@@ -87,6 +88,25 @@ if QT_AVAILABLE:
             loop.exec()
 
             self.assertEqual(order, ["before", "capture"])
+
+        def test_window_mode_wraps_not_implemented_error(self):
+            """Test that CaptureService catches NotImplementedError and raises CaptureError."""
+            
+            # Monkey-patch backend to Simulate real backend behavior
+            def _raise(*args, **kwargs):
+                raise NotImplementedError("Not supported")
+            
+            self.backend.capture_window = _raise
+            
+            request = CaptureRequest(mode=CaptureMode.WINDOW, delay_seconds=0)
+            
+            # Use perform_capture synchronous via direct call? 
+            # perform_capture returns result if delay=0 AND no callbacks?
+            # Check implementation:
+            # if delay_ms=0 and no callbacks -> _run_capture() -> returns result.
+            
+            with self.assertRaises(CaptureError):
+                self.service.perform_capture(request)
 else:
 
     class TestCaptureServiceTimer(unittest.TestCase):

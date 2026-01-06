@@ -42,7 +42,8 @@ class QtCaptureBackend(BaseCaptureBackend):
         return full.copy(bounded)
 
     def capture_window(self, window_id: Optional[int] = None) -> QPixmap:
-        # Implementação básica: usa fullscreen e a UI recorta a janela.
-        # Futuro: integração com X11 (xwininfo) ou Wayland portal.
-        logger.debug("capture_window chamado com window_id=%s (modo simples).", window_id)
-        return self.capture_fullscreen()
+        # Em Linux moderno (Wayland) e até X11, grabWindow(id) é instável ou proibido.
+        # Melhor falhar explicitamente do que retornar screenshot da tela toda enganosamente.
+        msg = "Captura de janela (Window Mode) não é suportada nativamente pelo backend Qt neste ambiente."
+        logger.warning(msg)
+        raise NotImplementedError(msg)

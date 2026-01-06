@@ -6,14 +6,13 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QMainWindow,
     QToolBar,
-    QAction,
     QFileDialog,
     QMessageBox,
     QStatusBar,
     QWidget,
     QHBoxLayout,
 )
-from PySide6.QtGui import QKeySequence, QGuiApplication
+from PySide6.QtGui import QKeySequence, QGuiApplication, QAction
 from PySide6.QtCore import Qt
 
 from ..config import AppConfig

@@ -105,9 +105,10 @@ class CaptureService:
                 raise CaptureError("Nenhuma região fornecida para captura de área.")
             pix = self.backend.capture_region(rect)
         elif mode == CaptureMode.WINDOW:
-            pix = self.backend.capture_window(request.window_id)
-        else:
-            raise CaptureError(f"Modo de captura não suportado: {mode}")
+            try:
+                pix = self.backend.capture_window(request.window_id)
+            except NotImplementedError as exc:
+                raise CaptureError(f"Erro de suporte: {exc}") from exc
 
         return CaptureResult(
             pixmap=pix,
