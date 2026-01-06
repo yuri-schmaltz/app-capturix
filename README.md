@@ -80,6 +80,11 @@ Você pode criar um atalho global no seu ambiente gráfico (GNOME, KDE, etc.):
 - **Atalho**: `Super+Shift+S`
 - **Comando**: `linsnipper --snip`
 
+Para usuários GNOME, há um script facilitador:
+```bash
+./scripts/setup_gnome_shortcut.sh
+```
+
 ## Estrutura do projeto
 
 ```text

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "linsnipper"
-version = "0.2.0"
+version = "0.2.1"
 description = "Screenshot/snipping tool for Linux inspired by Windows 11 Snipping Tool"
 authors = [{name = "Your Name", email = "you@example.com"}]
 readme = "README.md"

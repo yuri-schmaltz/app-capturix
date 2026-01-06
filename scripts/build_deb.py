@@ -7,7 +7,17 @@ from pathlib import Path
 
 # Config
 APP_NAME = "linsnipper"
-VERSION = "0.2.0"
+import tomllib
+
+# Config
+APP_NAME = "linsnipper"
+
+def get_version():
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+    return data["project"]["version"]
+
+VERSION = get_version()
 ARCH = "all"
 MAINTAINER = "Your Name <you@example.com>"
 DESC = "Screenshot and snipping tool for Linux"
@@ -58,7 +68,18 @@ if __name__ == '__main__':
 """)
     shim_path.chmod(0o755)
 
-    # 3. Create .desktop file (System Menu Entry)
+    # 3. Install Icon
+    ICON_DIR = SHARE_DIR / "icons" / "hicolor" / "256x256" / "apps"
+    ICON_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # We need to find the source icon. It's in src/linsnipper/ui/assets/icon.png
+    src_icon = Path("src/linsnipper/ui/assets/icon.png")
+    if src_icon.exists():
+        shutil.copy(src_icon, ICON_DIR / f"{APP_NAME}.png")
+    else:
+        print("WARNING: Source icon not found at src/linsnipper/ui/assets/icon.png")
+
+    # 4. Create .desktop file (System Menu Entry)
     APPS_DIR = SHARE_DIR / "applications"
     APPS_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -66,18 +87,17 @@ if __name__ == '__main__':
 Name=LinSnipper
 Comment={DESC}
 Exec=/usr/bin/{APP_NAME}
-Icon=utilities-terminal
+Icon={APP_NAME}
 Type=Application
 Categories=Utility;Graphics;
 Terminal=false
 StartupNotify=true
 """
-    # Note: Ideally we should bundle an icon too, but 'utilities-terminal' or generic is fine for now.
     
     with open(APPS_DIR / f"{APP_NAME}.desktop", "w") as f:
         f.write(desktop_content)
 
-    # 4. Create Control File
+    # 5. Create Control File
     control_content = f"""Package: {APP_NAME}
 Version: {VERSION}
 Section: utils
