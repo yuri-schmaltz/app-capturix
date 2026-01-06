@@ -11,13 +11,14 @@ VERSION = "0.2.0"
 ARCH = "all"
 MAINTAINER = "Your Name <you@example.com>"
 DESC = "Screenshot and snipping tool for Linux"
-DEPENDS = "python3, python3-pyside6"
+DEPENDS = "python3, libegl1, libxkbcommon-x11-0, libdbus-1-3, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-xinerama0, libxcb-xfixes0"
 
 BUILD_DIR = Path("build_deb")
 PKG_DIR = BUILD_DIR / f"{APP_NAME}_{VERSION}_{ARCH}"
 DEBIAN_DIR = PKG_DIR / "DEBIAN"
 USR_DIR = PKG_DIR / "usr"
-LIB_DIR = USR_DIR / "lib" / "python3" / "dist-packages"
+# Use a private directory to avoid conflicts and ensure we find our bundled deps
+LIB_DIR = USR_DIR / "lib" / APP_NAME 
 BIN_DIR = USR_DIR / "bin"
 
 def main():
@@ -31,28 +32,24 @@ def main():
 
     print(f"Building {APP_NAME} v{VERSION}...")
 
-    # 1. Install app into build dir
-    print("Installing application to build directory...")
+    # 1. Install app AND dependencies into private build directory
+    print("Installing application and dependencies...")
     subprocess.check_call([
         sys.executable, "-m", "pip", "install", ".", 
         f"--target={LIB_DIR}", 
-        "--no-deps",  # We rely on system packages or other means
-        "--upgrade"
+        "--upgrade" 
+        # removed --no-deps so PySide6 is included (bundled)
     ])
 
-    # 2. Create Launcher Script (since pip install -t doesn't create bin scripts nicely for us in this structure sometimes, or we want a custom one)
-    # Actually, standard pip install usually creates bin scripts if not --target, but with --target it puts them in bin inside target? No.
-    # Let's verify where entry points go. with --target, bin scripts might not be generated standardly.
-    # Safe bet: Write our own shim.
-    
+    # 2. Create Launcher Script
     shim_path = BIN_DIR / APP_NAME
     with open(shim_path, "w") as f:
         f.write(f"""#!/usr/bin/python3
 import sys
 from pathlib import Path
 
-# Ensure our local lib is found (standard debian paths are typically in path, but just in case)
-sys.path.insert(0, "/usr/lib/python3/dist-packages")
+# Add our private library path
+sys.path.insert(0, "/usr/lib/{APP_NAME}")
 
 from linsnipper.__main__ import main
 if __name__ == '__main__':
