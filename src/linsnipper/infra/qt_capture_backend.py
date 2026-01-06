@@ -23,12 +23,54 @@ class QtCaptureBackend(BaseCaptureBackend):
         return screen
 
     def capture_fullscreen(self) -> QPixmap:
-        screen = self._primary_screen()
-        pixmap = screen.grabWindow(0)
-        if pixmap.isNull():
-            logger.error("QScreen.grabWindow(0) retornou pixmap nulo.")
-            raise CaptureError("Falha ao capturar tela cheia.")
-        return pixmap
+        screens = QGuiApplication.screens()
+        if not screens:
+            logger.error("Nenhuma tela detectada.")
+            raise CaptureError("Não foi possível detectar telas.")
+
+        # 1. Calcular a geometria total (união de todas as telas)
+        total_rect = QRect()
+        for screen in screens:
+            total_rect = total_rect.united(screen.geometry())
+
+        if total_rect.isNull():
+            raise CaptureError("Geometria total das telas é inválida.")
+
+        # 2. Criar o pixmap gigante ("Canvas Virtual")
+        full_pixmap = QPixmap(total_rect.size())
+        full_pixmap.fill(Qt.black)  # Fundo padrão caso haja buracos
+
+        # 3. Pintar cada tela na posição correta
+        # Precisamos de um Painter para compor
+        from PySide6.QtGui import QPainter
+        from PySide6.QtCore import QPoint
+
+        painter = QPainter(full_pixmap)
+        
+        # O total_rect pode começar em coordenadas negativas (ex: tela secundária à esquerda)
+        # Precisamos transladar tudo para (0,0) do pixmap
+        offset_x = -total_rect.x()
+        offset_y = -total_rect.y()
+
+        for screen in screens:
+            # Captura a tela individual
+            screen_pix = screen.grabWindow(0)
+            geom = screen.geometry()
+            
+            # Posição no canvas virtual
+            target_x = geom.x() + offset_x
+            target_y = geom.y() + offset_y
+            
+            painter.drawPixmap(target_x, target_y, screen_pix)
+
+        painter.end()
+
+        # Nota: O CapturaService/Backend pode precisar expor o offset 
+        # se quisermos mapear de volta para coordenadas globais, 
+        # mas para 'Screenshot' simples, perder a coordenada absoluta global geralmente é OK,
+        # desde que a imagem relativa esteja certa.
+        
+        return full_pixmap
 
     def capture_region(self, rect: QRect) -> QPixmap:
         if rect.isNull() or rect.width() <= 0 or rect.height() <= 0:
